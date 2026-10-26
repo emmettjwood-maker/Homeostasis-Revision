@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nervous and Endocrine Control: Interactive Lab</title>
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--tx:#1d2330;--mut:#5d6575;--bd:#cfccc2;--ac:#0f766e;--hi:#c2410c;--glow:#fde68a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171d;--card:#1e232c;--tx:#e8eaee;--mut:#9aa3b2;--bd:#3d4554;--ac:#2dd4bf;--hi:#fb923c;--glow:#5b4a12}}
+:root[data-theme="dark"]{--bg:#14171d;--card:#1e232c;--tx:#e8eaee;--mut:#9aa3b2;--bd:#3d4554;--ac:#2dd4bf;--hi:#fb923c;--glow:#5b4a12}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:960px;margin:0 auto;padding:14px}
+h1{font-size:1.4rem;margin:0}h2{font-size:1.05rem;margin:0 0 6px}.sub{color:var(--mut);font-size:.9rem}
+.tabs,.cs,.ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0}
+button{font:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;padding:6px 12px}
+button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+.pn{display:none}.pn.on{display:block}
+.note{margin-top:8px;padding:8px 10px;background:var(--glow);border-radius:8px;min-height:3.2em}
+.dots i{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--bd);margin-right:4px}.dots i.on{background:var(--ac)}
+svg,canvas{width:100%;height:auto;display:block}
+ul{margin:4px 0;padding-left:20px}li{margin:3px 0}
+input[type=range]{width:100%;max-width:380px}label{font-size:.9rem}
+.t{font:12px system-ui;fill:var(--tx)}.m{font:11px system-ui;fill:var(--mut)}.k{font:11px system-ui;fill:#111}
+table{border-collapse:collapse;font-size:.88rem;width:100%}th,td{border:1px solid var(--bd);padding:4px 8px;text-align:left}th{background:var(--bg)}
+.bar{background:var(--bd);border-radius:6px;height:16px;overflow:hidden;margin:2px 0 8px}.bar i{display:block;height:100%;width:0;transition:width .8s}
+.me{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+@keyframes pl{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+#ht{display:inline-block;font-size:2rem;animation:pl 1s infinite}
+</style></head><body><main>
+<h1>Nervous and endocrine control lab</h1>
+<div class="sub">Pick a topic, then step through, drag sliders or press the buttons.</div>
+<div class="tabs" id="tabs"></div><div id="panels"></div>
+</main>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const ctl=(p,a)=>`<div class="ctl"><button id="${p}-prev">◀ Back</button><button id="${p}-next" class="on">Next ▶</button>${a?`<button id="${p}-auto">▶ Auto-play</button>`:''}<button id="${p}-rst">↺ Reset</button><span class="dots" id="${p}-dots"></span></div><div class="note" id="${p}-note"></div>`;
+function stepper(p,max,render,notes,ms=2800){let s=0,tm=null;$(`#${p}-dots`).innerHTML='<i></i>'.repeat(max+1);
+ const stop=()=>{clearInterval(tm);tm=null;const a=$(`#${p}-auto`);if(a)a.textContent='▶ Auto-play'};
+ const go=n=>{s=Math.max(0,Math.min(max,n));render(s);$$(`#${p}-dots i`).forEach((x,i)=>x.classList.toggle('on',i==s));$(`#${p}-note`).innerHTML=typeof notes=='function'?notes(s):notes[s];if(s==max)stop()};
+ $(`#${p}-prev`).onclick=()=>{stop();go(s-1)};$(`#${p}-next`).onclick=()=>{stop();go(s+1)};$(`#${p}-rst`).onclick=()=>{stop();go(0)};
+ const a=$(`#${p}-auto`);if(a)a.onclick=()=>{if(tm)return stop();if(s>=max)go(0);a.textContent='⏸ Pause';tm=setInterval(()=>go(s+1),ms)};go(0);return()=>go(s)}
+const chips=(id,items,fn)=>{const e=$(id);e.innerHTML=items.map(t=>`<button>${t}</button>`).join('');const b=[...e.children];b.forEach((x,i)=>x.onclick=()=>{b.forEach(y=>y.classList.remove('on'));x.classList.add('on');fn(i)});b[0].click()};
+const kp=l=>`<div class="card"><b>Key points</b><ul>${l.map(x=>`<li>${x}</li>`).join('')}</ul></div>`;
+const TX=(x,y,t,c='t',a='middle')=>`<text class="${c}" x="${x}" y="${y}" text-anchor="${a}">${t}</text>`;
+const wr=(t,n)=>{let L=[''],i=0;for(const x of t.split(' ')){if((L[i]+' '+x).trim().length>n){L.push(x);i++}else L[i]=(L[i]+' '+x).trim()}return L};
+const ln=(t,x,y,n,c='t')=>wr(t,n).map((l,i)=>TX(x,y+i*13,l,c)).join('');
+let mid=0;
+function chainSvg(b,o={}){const id='m'+(mid++),w=116,g=26,n=b.length;let s=`<svg viewBox="0 0 700 220"><defs><marker id="${id}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#c2410c"/></marker></defs>`;
+ b.forEach((x,i)=>{const[t,u,k]=x.split('|'),px=14+i*(w+g),hl=o.hl==i,col=k=='n'?['#bfdbfe','#3b82f6']:k=='e'?['#e9d5ff','#9333ea']:['#f3f4f6','#9ca3af'];
+  s+=`<rect x="${px}" y="40" width="${w}" height="92" rx="10" fill="${hl?'#fde68a':col[0]}" stroke="${hl?'#0f766e':col[1]}" stroke-width="${hl?4:2}"/><text class="k" style="font-weight:700" x="${px+w/2}" y="58" text-anchor="middle">${wr(t,17)[0]}</text>${ln(wr(t,17).slice(1).join(' ')+' '+u,px+w/2,wr(t,17).length>1?71:74,17,'k')}`;
+  if(i<n-1)s+=`<text class="m" x="${px+w+g/2}" y="90" text-anchor="middle">→</text>`});
+ if(o.pulse)s+=`<circle r="6" fill="#f59e0b"><animateMotion path="M14 86 L${14+n*(w+g)} 86" dur="${n*.9}s" repeatCount="indefinite"/></circle>`;
+ if(o.fb!==false){const a=14+(n-1)*(w+g)+w/2,c=14+w/2;s+=`<path d="M${a} 134 L${a} 180 L${c} 180 L${c} 138" fill="none" stroke="#c2410c" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#${id})"/>${TX(350,200,'Negative feedback: the response reverses the change and inhibits the stimulus','m')}`}
+ return s+'</svg>'}
+
+const PN=[
+`<div class="card"><h2>Tolerance limits</h2><div class="cs" id="f-c"></div><label><b id="f-v"></b><br><input type="range" id="f-r" step="0.1"></label><div id="f-sv"></div><div class="note" id="f-n"></div></div>
+<div class="card"><h2>Stimulus–response model and negative feedback</h2><div id="c-sv"></div>${ctl('c')}</div>
+${kp(['Organisms survive best when internal conditions stay within tolerance limits: body temperature, water availability, blood glucose and CO₂ concentration.','Homeostasis maintains a relatively stable internal environment, mainly through the nervous and endocrine systems.','A change (stimulus) is detected by sensory receptors; effectors carry out a response that reverses the change (negative feedback).'])}`,
+`<div class="card"><h2>Reflex arc: nerve pathway</h2><div class="cs" id="rf-c"></div><div id="rf-sv"></div>${ctl('rf',1)}</div>
+<div class="card"><h2>Synapse and neurotransmitters</h2><div id="sy-sv"></div>${ctl('sy',1)}<div class="cs" id="nt-c"></div><div class="note" id="nt-n"></div></div>
+<div class="card"><h2>Receptors, effectors, health and technology</h2><div class="cs" id="re-c"></div><div class="note" id="re-n"></div><div class="cs" id="hl-c"></div><div class="note" id="hl-n"></div></div>
+${kp(['The CNS (brain and spinal cord) and PNS (nerves) give rapid communication and quick responses.','Pathway: receptor → sensory neuron → interneuron → motor neuron → effector. Reflexes are rapid, automatic and protective.','Synapses are junctions between neurons; neurotransmitters carry the signal across.'])}`,
+`<div class="card"><h2>Endocrine glands</h2><div class="cs" id="gl-c"></div><div id="gl-sv"></div><div class="note" id="gl-n"></div></div>
+<div class="card"><h2>How a hormone reaches its target</h2><div id="ho-sv"></div>${ctl('ho',1)}</div>
+<div class="card"><h2>Chemical types of hormone</h2><div class="cs" id="ty-c"></div><div class="note" id="ty-n"></div></div>
+${kp(['The endocrine system controls body processes with hormones, which travel in the blood to target cells, tissues or organs and change their metabolism and activity.','Key glands: hypothalamus/pituitary, thyroid, parathyroid, adrenal glands, pancreatic islet cells.'])}`,
+`<div class="card"><h2>Hormone control loops</h2><div class="cs" id="lp-c"></div><label><b id="lp-dl"></b><br><input type="range" id="lp-d" min="-100" max="100" value="0"></label><div class="ctl"><label><input type="checkbox" id="lp-w" checked> <span id="lp-wl"></span></label></div>
+<canvas id="lp-cv" width="600" height="200"></canvas><div class="me"><div><span id="lp-b1l"></span><div class="bar"><i id="lp-b1" style="background:#ea580c"></i></div></div><div><span id="lp-b2l"></span><div class="bar"><i id="lp-b2" style="background:#2563eb"></i></div></div></div><div class="note" id="lp-n"></div></div>
+${kp(['Insulin lowers and glucagon raises blood glucose. Diabetes mellitus can result from a hormonal imbalance involving insulin regulation, so glucose control fails.','TSH regulates thyroxine production; thyroxine influences metabolic rate. Feedback control keeps it stable.','ADH acts on the nephron to increase water reabsorption, controlling urine concentration and body water. Water balance affects blood volume and blood pressure.'])}`,
+`<div class="card"><h2>Fight-or-flight: adrenaline</h2><div id="ad-sv"></div>${ctl('ad',1)}
+<div class="me"><div>Heart rate: <b id="hr"></b> bpm <span id="ht">❤️</span><div class="bar"><i id="hrb" style="background:#dc2626"></i></div></div><div>Breathing: <b id="br"></b> breaths/min<div class="bar"><i id="brb" style="background:#2563eb"></i></div></div><div>Blood glucose: <b id="gu"></b> mmol/L<div class="bar"><i id="gub" style="background:#eab308"></i></div></div></div></div>
+${kp(['Adrenaline prepares the body for rapid action: faster heart rate, faster breathing and more energy available.','Hormonal responses can be triggered by the nervous system (as here) or by other hormones (e.g. TSH stimulating thyroxine release).'])}`,
+`<div class="card"><h2>Speed and duration: nerves vs hormones</h2><div class="ctl"><button id="rc-b" class="on">▶ Send both signals</button></div><div id="rc-sv"></div>
+<table><tr><th></th><th>Nervous system</th><th>Endocrine system</th></tr><tr><td>Signal</td><td>Nerve impulses (electrical, chemical at synapses)</td><td>Hormones carried in the blood</td></tr><tr><td>Speed</td><td>Very fast</td><td>Slower</td></tr><tr><td>Effect</td><td>Short-term</td><td>Often longer-lasting</td></tr><tr><td>Effectors</td><td>Muscles, glands</td><td>Target cells, tissues, organs</td></tr></table></div>
+<div class="card"><h2>Working together</h2><div class="cs" id="wk-c"></div><div id="wk-sv"></div><div class="note" id="wk-n"></div><div class="sub">Blue boxes: nervous system. Purple boxes: endocrine system. Grey: stimulus or response.</div></div>
+${kp(['Both systems maintain homeostasis and can work separately or together: body temperature, osmoregulation, blood sugar, and CO₂ and pH.','Brain pH is monitored as an indicator of blood CO₂, keeping CO₂ stable and supporting normal respiration and brain function.'])}`];
+$('#panels').innerHTML=PN.map((h,i)=>`<section class="pn" id="p${i}">${h}</section>`).join('');
+$('#tabs').innerHTML=['1 Homeostasis','2 Nervous system','3 Endocrine system','4 Hormone loops','5 Adrenaline','6 Compare & combine'].map((t,i)=>`<button onclick="tab(${i})">${t}</button>`).join('');
+function tab(i){$$('.pn').forEach((p,k)=>p.classList.toggle('on',k==i));$$('#tabs button').forEach((b,k)=>b.classList.toggle('on',k==i))}
+
+/* 1 */
+const F=[{n:'Body temperature',u:'°C',min:28,max:44,v:37,ol:36.5,oh:37.5,tl:35,th:39,lo:'Too cold: enzyme and nerve activity slow down.',hi:'Too hot: enzymes begin to denature and cells are damaged.'},
+{n:'Water availability',u:'% of normal body water',min:70,max:130,v:100,ol:97,oh:103,tl:90,th:110,lo:'Dehydrated: blood more concentrated, cells shrink, blood volume falls.',hi:'Over-hydrated: cells take in water and swell.'},
+{n:'Blood glucose',u:'mmol/L',min:1,max:12,v:5,ol:4,oh:6,tl:3.5,th:8,lo:'Too low: brain cells lack fuel (confusion, fainting).',hi:'Too high: sustained hyperglycaemia, as in diabetes mellitus.'},
+{n:'CO₂ in blood',u:'mmHg',min:25,max:60,v:40,ol:38,oh:42,tl:33,th:48,lo:'Too low: blood pH rises.',hi:'Too high: carbonic acid forms and blood and brain pH fall.'}];let fi=0;
+function gauge(){const f=F[fi],v=+$('#f-r').value,X=a=>20+(a-f.min)/(f.max-f.min)*560;
+ $('#f-v').textContent=`${f.n}: ${v.toFixed(1)} ${f.u}`;
+ $('#f-sv').innerHTML=`<svg viewBox="0 0 600 120"><rect x="20" y="50" width="560" height="28" rx="6" fill="#fca5a5"/><rect x="${X(f.tl)}" y="50" width="${X(f.th)-X(f.tl)}" height="28" fill="#fde68a"/><rect x="${X(f.ol)}" y="50" width="${X(f.oh)-X(f.ol)}" height="28" fill="#86efac"/>
+ <polygon points="${X(v)-9},38 ${X(v)+9},38 ${X(v)},56" fill="var(--tx)"/>${TX(X(f.tl),98,'lower limit','m')}${TX(X(f.th),98,'upper limit','m')}${TX(X((f.ol+f.oh)/2),112,'optimum','m')}${TX(60,25,'Outside limits','m')}${TX(540,25,'Outside limits','m')}</svg>`;
+ $('#f-n').textContent=v>=f.ol&&v<=f.oh?'Optimum: the organism functions best.':v>=f.tl&&v<=f.th?'Within tolerance limits but away from the optimum: homeostatic mechanisms act to bring it back.':'Outside tolerance limits: normal functioning is affected. '+(v<f.tl?f.lo:f.hi)}
+chips('#f-c',F.map(f=>f.n),i=>{fi=i;const r=$('#f-r'),f=F[i];r.min=f.min;r.max=f.max;r.value=f.v;gauge()});$('#f-r').oninput=gauge;
+const CB=['Stimulus|Body temperature rises above normal','Sensory receptors|detect the change','Control centre|brain (nervous) or gland (endocrine) compares with set point','Effectors|muscles or glands carry out the response','Response|temperature falls back to normal'];
+stepper('c',5,s=>$('#c-sv').innerHTML=chainSvg(CB,{hl:s<5?s:-1,fb:s==5}),['A change in internal or external conditions is the stimulus (example: body temperature rises).','Sensory receptors detect the change.','A control centre processes the information and sends a signal (nervous or endocrine).','Effectors (muscles or glands) carry out the response.','The response corrects the change.','Negative feedback: the response reverses the original change and so inhibits the stimulus, returning the body to normal.'],2600);
+
+/* 2 */
+const RF=[{n:'Patellar reflex',st:'Tap on the tendon below the kneecap',rc:'Stretch receptors in the quadriceps',ef:'Quadriceps muscle',rs:'Muscle contracts and the lower leg kicks'},{n:'Pupillary reflex',st:'Bright light enters the eye',rc:'Photoreceptors in the retina',ef:'Iris muscles',rs:'Pupil constricts, protecting the retina'},{n:'Withdraw from hot object',st:'Hand touches a hot object',rc:'Heat and pain receptors in skin',ef:'Biceps muscle',rs:'Arm flexes and the hand is pulled away'}];let ri=0,rst=0;
+function arc(s){const r=RF[ri],A=(k)=>s==k?1:.4;let o='<svg viewBox="0 0 640 230">';
+ o+=`<rect x="250" y="55" width="170" height="130" rx="14" fill="rgba(148,163,184,.25)" stroke="var(--mut)" stroke-dasharray="5 4"/>${TX(335,72,'CNS (spinal cord / brain)','m')}`;
+ o+=`<circle cx="50" cy="130" r="18" fill="#fde68a" stroke="var(--tx)" opacity="${A(1)}"/>${ln(r.rc,50,165,20,'m')}`;
+ o+=`<line x1="68" y1="130" x2="250" y2="130" stroke="#3b82f6" stroke-width="${s==2?9:5}" opacity="${A(2)}"/>${TX(160,118,'Sensory neuron','t')}`;
+ o+=`<circle cx="335" cy="130" r="${s==3?20:15}" fill="#86efac" stroke="var(--tx)" opacity="${A(3)}"/>${TX(335,168,'Interneuron','t')}`;
+ o+=`<line x1="350" y1="130" x2="545" y2="130" stroke="#f97316" stroke-width="${s==4?9:5}" opacity="${A(4)}"/>${TX(470,118,'Motor neuron','t')}`;
+ o+=`<rect x="545" y="105" width="75" height="50" rx="8" fill="#fca5a5" stroke="var(--tx)" opacity="${A(5)}"/>${ln(r.ef,582,127,12,'k')}`;
+ if(s==0)o+=`<text x="50" y="80" font-size="26" text-anchor="middle">⚡</text>${ln(r.st,50,45,22,'t')}`;
+ if(s==2)o+=`<circle r="8" fill="#facc15"><animateMotion path="M68 130 L250 130" dur="1.2s" repeatCount="indefinite"/></circle>`;
+ if(s==4)o+=`<circle r="8" fill="#facc15"><animateMotion path="M350 130 L545 130" dur="1.2s" repeatCount="indefinite"/></circle>`;
+ if(s==5)o+=ln(r.rs,582,185,16,'t');return o+'</svg>'}
+const rgo=stepper('rf',5,s=>{rst=s;$('#rf-sv').innerHTML=arc(s)},s=>{const r=RF[ri];return['Stimulus: '+r.st+'.','Receptor: '+r.rc+' detects it.','Sensory neuron carries the impulse to the CNS.','Interneuron in the CNS processes the information (no conscious thought needed, so the reflex is fast and automatic).','Motor neuron carries the instruction to the effector.','Effector ('+r.ef+') responds: '+r.rs+'. Reflexes protect the body; information also reaches the brain.'][s]},2600);
+chips('#rf-c',RF.map(x=>x.n),i=>{ri=i;rgo()});
+function syn(s){let o='<svg viewBox="0 0 600 220"><line x1="0" y1="90" x2="30" y2="90" stroke="#3b82f6" stroke-width="8"/><rect x="30" y="40" width="220" height="100" rx="30" fill="#bfdbfe" stroke="var(--tx)" stroke-width="2"/><rect x="350" y="40" width="220" height="100" rx="30" fill="#fecaca" stroke="var(--tx)" stroke-width="2"/><line x1="570" y1="90" x2="600" y2="90" stroke="#3b82f6" stroke-width="8"/>'+TX(140,160,'Presynaptic neuron','t')+TX(460,160,'Postsynaptic neuron','t')+TX(300,100,'synaptic cleft','m');
+ [55,85,115].forEach(y=>o+=`<rect x="344" y="${y}" width="8" height="18" fill="#0891b2"/>`);
+ [[90,70],[130,100],[100,115],[170,75]].forEach(([x,y],i)=>o+=`<circle cx="${x}" cy="${y}" r="10" fill="#fde68a" stroke="#b45309" opacity="${s>=2?.25:1}">${s==1?`<animate attributeName="cx" to="238" dur="1.5s" fill="freeze"/><animate attributeName="cy" to="${60+i*20}" dur="1.5s" fill="freeze"/>`:''}</circle>`);
+ if(s==0)o+=`<circle r="8" fill="#facc15"><animateMotion path="M0 90 L240 90" dur="1.6s" repeatCount="indefinite"/></circle>`;
+ for(let i=0;i<8;i++){const y=55+i*10;if(s==2)o+=`<circle r="4" fill="#f97316"><animateMotion path="M255 ${y} L340 ${y+3}" dur="1.5s" begin="${i*.15}s" repeatCount="indefinite"/></circle>`;
+  if(s==1)o+=`<circle cx="256" cy="${y}" r="4" fill="#f97316" opacity="0"><animate attributeName="opacity" to="1" begin="1s" dur=".5s" fill="freeze"/></circle>`;
+  if(s==3)o+=`<circle cx="340" cy="${y}" r="4" fill="#f97316"/>`;
+  if(s==4)o+=`<circle cx="340" cy="${y}" r="4" fill="#f97316"><animate attributeName="opacity" to="0" dur="2s" fill="freeze"/></circle>`}
+ if(s==3)o+=`<circle r="8" fill="#facc15"><animateMotion path="M360 90 L600 90" dur="1.6s" repeatCount="indefinite"/></circle>${TX(470,70,'new impulse','t')}`;
+ if(s==4)o+=TX(300,200,'Neurotransmitter is broken down or taken back up: the signal ends','t');return o+'</svg>'}
+stepper('sy',4,s=>$('#sy-sv').innerHTML=syn(s),['A nerve impulse arrives at the end of the presynaptic neuron.','Vesicles fuse with the membrane and release neurotransmitter into the synaptic cleft.','Neurotransmitter molecules diffuse across the cleft.','They bind to receptors on the postsynaptic membrane, triggering a new impulse.','Neurotransmitter is removed (broken down or reabsorbed), so the signal stops.'],2600);
+const NT=[['Acetylcholine','Triggers muscle contraction at neuromuscular junctions; also involved in memory and attention.'],['Dopamine','Movement control and reward pathways; loss of dopamine neurons causes Parkinson’s disease.'],['Serotonin','Influences mood, sleep and appetite.'],['Norepinephrine','Alertness and arousal; part of the fight-or-flight response.']];
+chips('#nt-c',NT.map(x=>x[0]),i=>$('#nt-n').textContent=NT[i][0]+': '+NT[i][1]);
+const RE=[['Smell','Chemoreceptors in the nose detect airborne chemicals.'],['Taste','Chemoreceptors in taste buds detect dissolved chemicals.'],['Touch','Mechanoreceptors in the skin detect pressure and contact.'],['Pain','Pain receptors detect tissue damage or harmful stimuli.'],['Body position','Receptors in muscles, joints and the inner ear detect position and movement.'],['Effectors','Muscles (contract) and glands (secrete) carry out the response.']];
+chips('#re-c',RE.map(x=>x[0]),i=>$('#re-n').textContent=RE[i][1]);
+const HL=[['Alzheimer’s','Neurons gradually degenerate, causing memory loss and declining thinking skills.'],['Parkinson’s','Dopamine-producing neurons die, causing tremor and slow movement.'],['Paralysis / paraplegia','Nerve or spinal cord damage blocks impulses, so movement and sensation below the injury are lost.'],['Anaesthetics','Block nerve impulses or synaptic transmission so pain is not sensed.'],['Cochlear implants','Electrodes stimulate the auditory nerve directly, bypassing damaged ear structures.'],['Artificial eyes','Devices stimulate the retina or visual pathway to give some sense of vision.']];
+chips('#hl-c',HL.map(x=>x[0]),i=>$('#hl-n').textContent=HL[i][1]);
+
+/* 3 */
+const GL=[['Hypothalamus / pituitary','The hypothalamus links the nervous and endocrine systems and controls the pituitary. The pituitary releases hormones such as TSH and ADH.',[[300,45]]],['Thyroid','Releases thyroxine, which influences metabolic rate; stimulated by TSH.',[[300,98]]],['Parathyroid','Small glands behind the thyroid that release parathyroid hormone, which raises blood calcium.',[[290,104],[310,104]]],['Adrenal glands','Sit above the kidneys; release adrenaline for fight-or-flight and steroid hormones.',[[268,178],[332,178]]],['Pancreatic islet cells','β cells release insulin and α cells release glucagon to control blood glucose.',[[300,210]]]];
+chips('#gl-c',GL.map(x=>x[0]),i=>{let s='<svg viewBox="0 0 600 270"><circle cx="300" cy="45" r="30" fill="#fcd9b6" stroke="var(--tx)"/><path d="M270 75 Q300 65 330 75 L360 120 L350 250 L250 250 L240 120 Z" fill="#fcd9b6" stroke="var(--tx)"/><ellipse cx="270" cy="195" rx="14" ry="22" fill="#f87171" opacity=".5"/><ellipse cx="330" cy="195" rx="14" ry="22" fill="#f87171" opacity=".5"/>';
+ GL.forEach((g,k)=>g[2].forEach(([x,y])=>s+=`<circle cx="${x}" cy="${y}" r="${k==i?9:5}" fill="${k==i?'#9333ea':'#a78bfa'}" stroke="var(--tx)">${k==i?'<animate attributeName="r" values="7;12;7" dur="1.2s" repeatCount="indefinite"/>':''}</circle>`));
+ s+=TX(420,50,'Hypothalamus / pituitary','t','start')+TX(420,100,'Thyroid, parathyroids','t','start')+TX(420,180,'Adrenal glands','t','start')+TX(420,212,'Pancreatic islets','t','start');
+ $('#gl-sv').innerHTML=s+'</svg>';$('#gl-n').textContent=GL[i][0]+': '+GL[i][1]});
+function ho(s){let o='<svg viewBox="0 0 600 230"><rect x="10" y="170" width="580" height="44" fill="#fecaca" opacity=".7"/>'+TX(300,196,'Blood vessel','m')+'<circle cx="70" cy="110" r="42" fill="#fde68a" stroke="var(--tx)" stroke-width="2"/>'+TX(70,114,'Gland cell','t')+'<ellipse cx="500" cy="90" rx="75" ry="48" fill="#bbf7d0" stroke="var(--tx)" stroke-width="2"/>'+TX(500,70,'Target cell','t')+'<ellipse cx="300" cy="90" rx="60" ry="40" fill="#e5e7eb" stroke="var(--tx)" stroke-width="2"/>'+TX(300,82,'Non-target cell','t')+TX(300,98,'(no matching receptor)','m');
+ [450,500,550].forEach(x=>o+=`<path d="M${x-8} 138 L${x} 124 L${x+8} 138Z" fill="#0891b2"/>`);[270,300,330].forEach(x=>o+=`<rect x="${x-6}" y="124" width="12" height="10" fill="#9ca3af"/>`);
+ for(let i=0;i<5;i++){const y=186+i%2*10;if(s==1)o+=`<circle cx="${100+i*10}" cy="${y}" r="5" fill="#f97316" opacity="0"><animate attributeName="opacity" to="1" begin="${i*.2}s" dur=".4s" fill="freeze"/></circle>`;
+  if(s==2)o+=`<circle r="5" fill="#f97316"><animateMotion path="M100 ${y} L560 ${y}" dur="3s" begin="${i*.5}s" repeatCount="indefinite"/></circle>`;
+  if(s>=3&&i<3)o+=`<circle cx="${[450,500,550][i]}" cy="148" r="5" fill="#f97316"/>`}
+ if(s==4)o+=`<ellipse cx="500" cy="90" rx="80" ry="53" fill="none" stroke="#16a34a" stroke-width="4"><animate attributeName="opacity" values="1;.2;1" dur="1s" repeatCount="indefinite"/></ellipse>${TX(500,30,'Metabolism / activity changes','t')}`;return o+'</svg>'}
+stepper('ho',4,s=>$('#ho-sv').innerHTML=ho(s),['An endocrine gland cell makes a hormone.','The hormone is released into the bloodstream.','Blood carries it all around the body.','Only target cells have the matching receptor, so only they bind it. Others are unaffected.','Binding changes the target cell’s metabolism and activity.'],2600);
+const TY=[['Amino acid derivatives','Made from single amino acids, e.g. thyroxine and adrenaline.'],['Peptides','Short chains of amino acids, e.g. ADH and glucagon.'],['Proteins','Longer amino acid chains, e.g. insulin and TSH.'],['Steroids','Lipid-based, made from cholesterol, e.g. oestrogen, testosterone, cortisol. They pass through the cell membrane and act on receptors inside the cell.']];
+chips('#ty-c',TY.map(x=>x[0]),i=>$('#ty-n').textContent=TY[i][1]);
+
+/* 4 */
+const LP=[{n:'Blood glucose',u:'mmol/L',f:x=>5+3*x,d:'Fasting ◄ ► Carbohydrate meal',b1:'Insulin released (lowers glucose)',b2:'Glucagon released (raises glucose)',off:'hi',w:'Insulin regulation working (untick = diabetes mellitus)',bad:'Insulin missing or target cells unresponsive: glucose stays high after a meal. Diabetes mellitus is a hormonal imbalance that disrupts glucose control.'},
+{n:'Thyroxine level (metabolic rate)',u:'% of normal',f:x=>100+40*x,d:'Falling ◄ ► Rising',b1:'TSH ↓ so less thyroxine',b2:'TSH ↑ so more thyroxine',off:'both',w:'Thyroxine feedback working (untick = feedback lost)',bad:'Without feedback, thyroxine is not held steady, so metabolic rate drifts too high or too low.'},
+{n:'Blood concentration (osmolarity)',u:'mOsm/L',f:x=>300+30*x,d:'Over-hydration ◄ ► Dehydration',b1:'ADH released (water reabsorbed)',b2:'ADH reduced (more water lost)',off:'hi',w:'ADH working (untick = no ADH)',bad:'Without ADH the nephron cannot reabsorb enough water, so dehydration is not corrected.',ex:x=>' Blood volume and pressure: '+(x>.15?'falling (water lost).':x<-.15?'rising (excess water).':'normal.')}];
+let li=0,lx=0,lh=[];const lc=$('#lp-cv').getContext('2d');
+chips('#lp-c',LP.map(x=>x.n),i=>{li=i;lx=0;lh=[];$('#lp-dl').textContent=LP[i].d;$('#lp-b1l').textContent=LP[i].b1;$('#lp-b2l').textContent=LP[i].b2;$('#lp-wl').textContent=LP[i].w;$('#lp-d').value=0;$('#lp-w').checked=true});
+setInterval(()=>{const L=LP[li],d=$('#lp-d').value/100,w=$('#lp-w').checked;lx+=d*.012+(Math.random()-.5)*.01;
+ let c=.07*lx;if(!w&&(L.off=='both'||lx>0))c=0;lx=Math.max(-1.3,Math.min(1.3,lx-c));lh.push(lx);if(lh.length>250)lh.shift();
+ const cs=getComputedStyle(document.documentElement),tx=cs.getPropertyValue('--tx'),Y=v=>100-v*70;lc.clearRect(0,0,600,200);
+ lc.fillStyle='rgba(134,239,172,.4)';lc.fillRect(0,Y(.15),600,Y(-.15)-Y(.15));lc.strokeStyle='#dc2626';lc.setLineDash([6,4]);[.6,-.6].forEach(v=>{lc.beginPath();lc.moveTo(0,Y(v));lc.lineTo(600,Y(v));lc.stroke()});lc.setLineDash([]);
+ lc.fillStyle=tx;lc.font='11px system-ui';lc.fillText('tolerance limit',4,Y(.6)-3);lc.fillText('tolerance limit',4,Y(-.6)+12);lc.fillText('set point',540,Y(0)-3);
+ lc.strokeStyle='#0f766e';lc.lineWidth=3;lc.beginPath();lh.forEach((v,i)=>{const x=i/250*600;i?lc.lineTo(x,Y(v)):lc.moveTo(x,Y(v))});lc.stroke();lc.lineWidth=1;
+ $('#lp-b1').style.width=(w&&lx>.08?Math.min(100,Math.abs(lx)*130):0)+'%';$('#lp-b2').style.width=(lx<-.08?Math.min(100,Math.abs(lx)*130):0)+'%';
+ const out=Math.abs(lx)>.6;$('#lp-n').textContent=`${L.n}: ${L.f(lx).toFixed(1)} ${L.u}. ${out?'Outside tolerance limits: normal functioning is affected. ':Math.abs(lx)<.15?'Within the normal range. ':'Away from the set point; the hormone response is correcting it. '}${!w?L.bad:''}${L.ex?L.ex(lx):''}`},60);
+
+/* 5 */
+const AB=['Threat|Stimulus: a sudden danger|','Receptors|eyes and ears detect it (sensory neurons)|n','Brain|hypothalamus sends nerve signals|n','Adrenal glands|release adrenaline into blood|e','Target organs|heart, lungs, liver|'],HR=[70,70,70,72,85,140,75],BR=[15,15,15,15,18,32,16],GU=[5,5,5,5,5.4,7.5,5.2],HI=[-1,0,1,2,3,4,-1];
+stepper('ad',6,s=>{$('#ad-sv').innerHTML=chainSvg(AB,{hl:HI[s],fb:s==6,pulse:s==5});
+ $('#hr').textContent=HR[s];$('#br').textContent=BR[s];$('#gu').textContent=GU[s];$('#hrb').style.width=HR[s]/160*100+'%';$('#brb').style.width=BR[s]/40*100+'%';$('#gub').style.width=GU[s]/10*100+'%';$('#ht').style.animationDuration=60/HR[s]+'s'},
+ ['Calm: resting heart rate, breathing and blood glucose.','A threat is the stimulus.','Sensory receptors (eyes, ears) detect it and send impulses along sensory neurons.','The brain (hypothalamus) processes the signal and sends nerve impulses to the adrenal glands.','The adrenal glands release adrenaline into the blood. A nerve signal has triggered a hormone response.','Adrenaline reaches target organs: heart rate rises, breathing speeds up and more energy (glucose) is made available.','Threat gone: adrenaline is broken down and negative feedback returns the body to normal.'],2800);
+
+/* 6 */
+$('#rc-b').onclick=()=>{$('#rc-sv').innerHTML=`<svg viewBox="0 0 640 210">${TX(10,24,'Nervous: nerve impulse','t','start')}<line x1="20" y1="45" x2="460" y2="45" stroke="#3b82f6" stroke-width="5"/><circle r="8" fill="#facc15" opacity="0"><set attributeName="opacity" to="1" begin="0s" dur=".6s"/><animateMotion path="M20 45 L460 45" dur=".6s"/></circle>
+ <rect x="480" y="30" width="0" height="26" fill="#3b82f6"><animate attributeName="width" values="0;150;150;0" keyTimes="0;.1;.6;1" begin=".6s" dur="2.5s" fill="freeze"/></rect>${TX(555,72,'fast, short-lived','m')}
+ ${TX(10,114,'Endocrine: hormone in blood','t','start')}<rect x="20" y="130" width="440" height="14" fill="#fecaca"/><circle r="8" fill="#f97316" opacity="0"><set attributeName="opacity" to="1" begin="0s" dur="3.5s"/><animateMotion path="M20 137 L460 137" dur="3.5s"/></circle>
+ <rect x="480" y="124" width="0" height="26" fill="#9333ea"><animate attributeName="width" to="150" begin="3.5s" dur="1.5s" fill="freeze"/></rect>${TX(555,172,'slower, longer-lasting','m')}${TX(320,200,'Response strength shown at right','m')}</svg>`};$('#rc-b').click();
+const WK=[['Body temperature',['Stimulus|Body temperature rises|','Thermoreceptors|skin and hypothalamus|n','Hypothalamus|control centre (CNS)|n','Effectors|sweat glands, skin arterioles via motor neurons|n','Response|heat lost, temperature falls|'],'Nervous responses act quickly. Endocrine influence: the hypothalamus and pituitary release TRH and TSH, so the thyroid adjusts thyroxine and metabolic rate over a longer time.'],
+['Osmoregulation',['Stimulus|Blood too concentrated|','Osmoreceptors|in the hypothalamus|n','Hypothalamus|signals posterior pituitary|n','ADH|in blood, acts on the nephron|e','Response|more water reabsorbed|'],'Nervous detection plus endocrine action: ADH increases water reabsorption in the nephron. The brain also produces thirst.'],
+['Blood sugar',['Stimulus|Blood glucose rises|','Islet cells|β cells detect glucose|e','Control|release insulin|e','Effectors|liver and muscle take up glucose|e','Response|blood glucose falls|'],'The pancreas can work independently as an endocrine system. The nervous system can add input, e.g. adrenaline in fight-or-flight raises blood glucose.'],
+['CO₂ and pH',['Stimulus|CO₂ rises, brain pH falls|','Chemoreceptors|in the brain monitor pH|n','Breathing centre|in the brain|n','Effectors|diaphragm and rib muscles via motor neurons|n','Response|faster breathing, CO₂ falls|'],'Brain pH is an indicator of blood CO₂. Nerves speed up breathing to keep CO₂ stable. Adrenaline can also raise breathing rate during stress.']];
+chips('#wk-c',WK.map(x=>x[0]),i=>{$('#wk-sv').innerHTML=chainSvg(WK[i][1],{pulse:1});$('#wk-n').textContent=WK[i][2]});
+tab(0);
+</script></body></html>
